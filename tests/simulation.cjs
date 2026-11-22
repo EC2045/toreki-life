@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),path=require('path');
 const root=path.join(__dirname,'..');
-function boot(storage={}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:()=>{},URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
+function boot(storage={}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:()=>{},URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','regions.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
 let b=boot(),r=b.run;
 r("s=makeLife();s.nation='waon';s.origin='waon';s.lineage=['人間'];s.species='人間';s.vampire=false;normalize()");
 // No mandatory choices for routine childhood. Stop at the first school milestone.
@@ -24,6 +24,23 @@ r("s.activeDecision=true;s.event='career';save()");let reload=boot(b.storage);as
 // Country-specific ecology cannot leak into another country's encounters.
 r("s=makeLife();s.nation='japan';s.age=20;normalize()");assert.equal(r("ecologyEvents().filter(e=>e.ns?.includes('onva')).some(eligible)"),false);r("s.nation='onva'");assert(r("ecologyEvents().find(e=>e.id==='kororen')&&eligible(ecologyEvents().find(e=>e.id==='kororen'))"));
 // Full lives: ordinary history progresses in batches, no unaffordable-choice dead ends.
+// Regional moves preserve birthplace and currency; foreign moves reset the current region.
+r("s=makeLife();s.age=20;s.nation='waon';s.origin='waon';s.region='capital';s.originRegion='capital';s.money=20000;s.actionUsed=false;normalize()");
+assert(r("events().some(e=>e.id==='capitalStaff')"));
+assert(r("!migrateTo('waon','capital')"));
+assert(r("migrateTo('waon','buffer')"));
+assert.equal(r('s.money'),19600);
+assert.equal(r('s.originRegion'),'capital');
+assert.equal(r('s.log[0].region'),'buffer');
+assert(r("s.log[0].text.includes('許可証')"));
+assert(r("events().some(e=>e.id==='boundaryPermit')&&!events().some(e=>e.id==='capitalStaff')"));
+assert(r('localLivingCost()>currency().living'));
+r('s.actionUsed=false');assert(r("migrateTo('ifeci','state2')"));
+assert.equal(r('s.region'),'state2');assert.equal(r('s.originRegion'),'capital');
+assert(r("events().some(e=>e.id==='dialect-state2')&&!events().some(e=>e.id==='dialect-state1')"));
+assert.equal(boot(b.storage).run('s.region'),'state2');
+assert(r("Object.keys(nations).every(n=>regions[n].some(region=>region.birth))"));
+assert.equal(m.run('s.originRegion'),null);
 // A healthy 81-year-old is not forcibly ended; everyday and ecology events stay available.
 r("s=makeLife();s.age=81;s.quarter=0;s.stats.health=100;s.digital=false;normalize()");assert.equal(r('finishCheck()'),false);assert(r("events().filter(eligible).some(e=>e.id==='library')"));assert(r("ecologyEvents().filter(e=>e.ns?.includes('onva')).length>0"));
 // Forced rare fatal accident: auto progression stops at age 3, with one final log and durable cause.
