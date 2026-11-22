@@ -7,7 +7,7 @@ manchuria:{name:'満州国',sub:'東暦世界の満州国',note:'東暦世界に
 murai:{name:'無雷帝国',sub:'東暦世界の国家',note:'国家名を世界設定から採用。命名候補や日常の出来事は仮のゲーム設定。'},
 daikai:{name:'大海共和国',sub:'東暦世界の国家',note:'国家名を世界設定から採用。命名候補や日常の出来事は仮のゲーム設定。'}
 });
-let s=null;try{let x=JSON.parse(localStorage.getItem(KEY));if(x&&[1,2].includes(x.version)&&Array.isArray(x.log)&&x.stats)s=x}catch{}
+let s=null;try{let x=JSON.parse(localStorage.getItem(KEY));if(x&&[1,2,3].includes(x.version)&&Array.isArray(x.log)&&x.stats)s=x}catch{}
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function save(){try{localStorage.setItem(KEY,JSON.stringify(s));$('#saved').textContent='端末に自動保存済み'}catch{$('#saved').textContent='この端末では保存できません'}}
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),2600)}
@@ -155,4 +155,5 @@ function records(){let choices=[...(s?[s]:[]),...archive.filter(x=>!s||x.id!==s.
 function download(json=false){const x=viewingLife||s;if(!x)return;let txt=json?JSON.stringify(x,null,2):`東暦人生録 — ${x.name}\n出生 ${nations[x.origin||x.nation].name} / 居住 ${nations[x.nation].name}\n${x.age}歳 / ${x.species} / ${x.job}\n\n`+[...x.log].reverse().map(l=>`${l.year}年 ${l.age}歳 第${(l.quarter||0)+1}期 [${l.type||'記録'}] ${l.text}${l.delta?' ('+deltaText(l.delta)+')':''}`).join('\n');let url=URL.createObjectURL(new Blob([txt],{type:json?'application/json':'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='toreki-life-'+(json?'save.json':'chronicle.txt');a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function guide(){modal(`<div class="event-type">HOW TO LIVE</div><h2>運命と、選択で生きる。</h2><p>出生ガチャでは${Object.keys(nations).length}の国から均等に抽選。国別の名前候補、家庭、種族、気質と能力が決まります。0歳から始まり、一年に4つの出来事が起きます。6歳未満の選択は家族の視点も含みます。</p><p>選択後には結果を表示。予定外の事故や出費、嬉しい知らせも起こります。事故で療養が必要になると、しばらく生活に影響し、回復まで記録に残ります。健やかさが0になると人生が終わる場合があります。</p><p>自由行動は一年に一回。18歳から就職・転職・移住ができ、就業中は毎年12 LPの基礎収入。80歳で人生録を一区切りにします。新しい人生を始めても、過去の人生は人生録に残ります。</p><p>ログは種類・語句で検索でき、テキストやJSONで書き出せます。保存先はこのブラウザです。</p><button class="secondary" id="guideSources">出生国と参照資料を見る</button>`);$('#guideSources').onclick=showSources}
 function showSources(){modal(`<div class="event-type">WORLD REFERENCES</div><h2>地図から始まる、${Object.keys(nations).length}の故郷。</h2><p>${Object.values(nations).map(n=>n.name).join('、')}</p><p>2026年11月22日にユーザーから提供された世界地図と、東暦の公開資料を参照。地図上の州は国の抽選候補に含めていません。IFECI・onvaなど公開資料で確認できる国も含みます。満州国は地図の「満洲国」表記を採用しています。</p><p>国名以外の生活描写、人物名、名前の表記、抽選確率、事故率、医療費、職業や移住の条件、年齢の節目はゲームの仮設定です。特に無雷帝国・大海共和国・IFECIの生成名は正式な命名規則ではありません。現実の同名国家の地理・制度をそのまま使っていません。</p><p>一年4期は進行用の区分。東暦そのものの暦区分を定義するものではありません。一日は29時、一時は145分、一分は145秒。</p><ul>${sources.map(([t,u,d])=>`<li><a href="${u}" target="_blank" rel="noopener">${t}</a><br>${d}</li>`).join('')}</ul>`)}
-normalize();$('#newBtn').onclick=setup;$('#guideBtn').onclick=guide;$('#recordBtn').onclick=records;$('#allRecords').onclick=records;$('#sourcesBtn').onclick=showSources;render();
+// Startup and version migration are handled by systems.js.
+
