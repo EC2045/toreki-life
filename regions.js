@@ -1,7 +1,7 @@
 'use strict';
 
 const regionSources = {
-  waon: 'https://ec2045.github.io/Waon-Jinkoku/#tab-map',
+  waon: 'https://ec2045.github.io/Waon-Jinkoku/#tab-overview',
   ifeci: 'https://ec2045.github.io/ifeci/#states',
   onva: 'https://ec2045.github.io/onva/',
   japan: 'https://ec2045.github.io/NODE-LAB/'
@@ -135,7 +135,15 @@ function atlasPanel() {
       ${place.map(r=>`<div class="contact-row"><b>${esc(regionLabel(r))}</b><span>${r.kind} · ${r.note}</span></div>`).join('')}
       ${source?`<p><a href="${source}" target="_blank" rel="noopener">地域の参照資料</a></p>`:''}`;
   };
-  modal(`<h2>東暦の国と地域</h2><label for="atlasNation">国を選ぶ</label>
+  modal(`<h2>東暦の国と地域</h2>
+    <details open><summary>ラ＝ウクカ大陸の地図</summary>
+    <figure style="margin:12px 0"><img src="maps/ra-ukuka.png" width="653" height="362"
+      style="display:block;width:100%;height:auto;border-radius:6px;image-rendering:pixelated"
+      alt="西に和温陣国と首都の和陣当府、北東に無雷帝国、南東に火海共和国。">
+    </figure>
+    <div class="action-grid">${['waon','murai','daikai'].map(id=>`<button type="button" data-map-nation="${id}">${nations[id].name}</button>`).join('')}</div>
+    </details>
+    <label for="atlasNation">国を選ぶ</label>
     <select id="atlasNation">${Object.entries(nations).map(([id,n])=>`<option value="${id}">${n.name}</option>`).join('')}</select>
     <div id="atlasPage"></div>
     <p>和温陣国の区分は国勢調査フォームの居住地欄、IFECIは公式サイトの3州を参照。ゲーム内区分と地域ごとの生活費はゲーム用の設定。</p>
@@ -143,5 +151,8 @@ function atlasPanel() {
   $('#atlasNation').value=s?.nation||'waon';
   const update=()=>{$('#atlasPage').innerHTML=page($('#atlasNation').value)};
   $('#atlasNation').onchange=update;
+  document.querySelectorAll('[data-map-nation]').forEach(button=>{
+    button.onclick=()=>{$('#atlasNation').value=button.dataset.mapNation;update()};
+  });
   update();
 }
