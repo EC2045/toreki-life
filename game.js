@@ -61,7 +61,7 @@ thailand:[['ワタナ','チャイディー','スックサイ','シリワン'],['
 korea:[['金','李','朴','崔','鄭'],['ジウ','ソジュン','ハユン','ミンジュン','ソヨン','ジホ']],
 daikai:[['マリス','ナヴィル','セイル','アクア','コーヴ'],['ネリ','ルカ','アイラ','エリオ','ミラ','リーネ']]
 };
-function randomName(n){let key=['japan','edo','federation','nagasaki','murai'].includes(n)?'jp':['manchuria','shanghai','ming','china'].includes(n)?'cn':n;let [last,first]=names[key]||names.waon;return ['jp','cn'].includes(key)?pick(last)+' '+pick(first):key==='korea'?pick(last)+'・'+pick(first):pick(first)+(key==='onva'?' ':'・')+pick(last)}
+function randomName(n,random=Math.random){let pick=a=>a[Math.floor(random()*a.length)];let key=['japan','edo','federation','nagasaki','murai'].includes(n)?'jp':['manchuria','shanghai','ming','china'].includes(n)?'cn':n;let [last,first]=names[key]||names.waon;return ['jp','cn'].includes(key)?pick(last)+' '+pick(first):key==='korea'?pick(last)+'・'+pick(first):pick(first)+(key==='onva'?' ':'・')+pick(last)}
 let archive=[];try{archive=JSON.parse(localStorage.getItem(KEY+'-archive'))||[]}catch{}
 function normalize(){if(!s)return;if(!nations[s.nation])s.nation='waon';if(s.origin&&!nations[s.origin])s.origin=s.nation;s.version=2;s.quarter=s.quarter||0;s.origin=s.origin||s.nation;s.id=s.id||'legacy-'+s.birth+'-'+s.name;s.conditions=s.conditions||[];s.recent=s.recent||[];s.seen=s.seen||[];s.log=s.log||[];s.seasonEvents=s.seasonEvents||0;s.eventCounts=s.eventCounts||{};s.stats=s.stats||{health:70,happy:60,mind:30,bond:40};s.lastSnapshot=snapshot();}
 function snapshot(){return {...s.stats,money:s.money}}

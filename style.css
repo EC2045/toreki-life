@@ -53,3 +53,6 @@ main:has(#profile .identity) .horizon { height: 122px; }
 main:has(#profile .identity) .hero-content { display: none; }
 main:has(#profile .identity) .hero-year { top: 18px; }
 main:has(#profile .identity) .scene-label { left: 5%; right: auto; bottom: 26px; }
+.autoplay-controls { margin-top: 12px; }
+.autoplay-controls p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.autoplay-controls button[aria-pressed="true"] { border-color: #597e5b; }

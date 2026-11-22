@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),path=require('path');
 const root=path.join(__dirname,'..');
-function boot(storage={}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:()=>{},URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','regions.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
+function boot(storage={}, timers={set:()=>{},clear:()=>{}}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:timers.set,clearTimeout:timers.clear,URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','regions.js','people.js','autoplay.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
 let b=boot(),r=b.run;
 r("s=makeLife();s.nation='waon';s.origin='waon';s.lineage=['人間'];s.species='人間';s.vampire=false;normalize()");
 // No mandatory choices for routine childhood. Stop at the first school milestone.
@@ -41,6 +41,41 @@ assert(r("events().some(e=>e.id==='dialect-state2')&&!events().some(e=>e.id==='d
 assert.equal(boot(b.storage).run('s.region'),'state2');
 assert(r("Object.keys(nations).every(n=>regions[n].some(region=>region.birth))"));
 assert.equal(m.run('s.originRegion'),null);
+// Each country has a stable, unique local roster in addition to the published cast.
+assert(r("Object.keys(nations).every(n=>{const list=originalResidents.filter(p=>p.nation===n);return list.length===36&&new Set(list.map(p=>p.name)).size===36})"));
+r("s=makeLife();s.nation='onva';s.age=18;s.contacts=[];s.partnerId=null;normalize();meetCast(undefined,()=>0)");
+assert.equal(r('s.contacts[0].castId'),'aria');
+r("deepenContact(s.contacts[0],25);deepenContact(s.contacts[0],26)");
+assert.equal(r('s.contacts[0].status'),'friend');
+r("s.event=relationshipEvent(s.contacts[0]).id;s.activeDecision=true;save()");
+let socialReload=boot(b.storage);
+assert.equal(socialReload.run('s.event'),'relationship-aria');
+socialReload.run('choose(0)');
+assert.equal(socialReload.run('partnerName()'),'アリア・ウォーリン');
+assert(socialReload.run("s.log.some(x=>x.text.includes('付き合い始めた'))"));
+r("s.age=17");assert.equal(r('canAskOut(s.contacts[0])'),false);
+r("s.age=18;s.contacts[0].interest=.999;resolveRelationship({target:'aria',relationship:'ask'})");
+assert.equal(r('s.partnerId'),null);
+r("s.age=13;s.household.budget=0;s.seen=[]");assert(r("householdMilestone().choices.some(c=>c.text.includes('貸し出し'))"));
+r("s.household.budget=2");assert.equal(r("events().find(e=>e.id==='schoolSupport').choices[1].cost"),32);
+// The timer advances a year, stops on a choice, and preserves the manual pace.
+let scheduled=null;
+const timed=boot({}, {set:fn=>{scheduled=fn;return 1},clear:id=>{if(id===1)scheduled=null}});
+const play=timed.run;
+play("s=makeLife();s.age=4;s.quarter=0;s.progressMode='five';normalize();Math.random=()=>.999;toggleAutoplay()");
+assert.equal(typeof scheduled,'function');
+scheduled();
+assert.equal(play('s.age'),5);
+assert.equal(play("JSON.parse(localStorage.getItem(KEY)).progressMode"),'five');
+scheduled();
+assert.equal(play('s.age'),6);
+assert.equal(play('s.event'),'first');
+assert.equal(scheduled,null);
+assert(play("autoplayControls().includes('一時停止中')"));
+play("choose(0)");
+assert.equal(typeof scheduled,'function');
+play('toggleAutoplay()');
+assert.equal(scheduled,null);
 // A healthy 81-year-old is not forcibly ended; everyday and ecology events stay available.
 r("s=makeLife();s.age=81;s.quarter=0;s.stats.health=100;s.digital=false;normalize()");assert.equal(r('finishCheck()'),false);assert(r("events().filter(eligible).some(e=>e.id==='library')"));assert(r("ecologyEvents().filter(e=>e.ns?.includes('onva')).length>0"));
 // Forced rare fatal accident: auto progression stops at age 3, with one final log and durable cause.
