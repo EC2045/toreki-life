@@ -133,6 +133,7 @@ function atlasPanel() {
     const source=regionSources[nation];
     return `<h3>${nations[nation].name}</h3><p>${nations[nation].note}</p>
       ${place.map(r=>`<div class="contact-row"><b>${esc(regionLabel(r))}</b><span>${r.kind} · ${r.note}</span></div>`).join('')}
+      ${nation==='waon'?`<h4>人物</h4>${waonPublicPeople.map(person=>`<div class="contact-row"><b>${esc(person.name)}</b><span>性別：${esc(person.gender)}</span></div>`).join('')}`:''}
       ${source?`<p><a href="${source}" target="_blank" rel="noopener">地域の参照資料</a></p>`:''}`;
   };
   modal(`<h2>東暦の国と地域</h2>
@@ -156,3 +157,4 @@ function atlasPanel() {
   });
   update();
 }
+

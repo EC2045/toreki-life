@@ -23,16 +23,20 @@ const eastCalendarCast = [
   ['celia','onva','セリア',22,'人間','イラスト制作'],
   ['tet','onva','テト',19,'ウォーキャット','街の情報が行き交う場所'],
   ['lucia','onva','ルチア',26,'ウォーウルフ','地質調査と探検'],
-  ['rina','waon','莉奈・モンサンパス',14,'種族未公表','通信環を使った日々の暮らし'],
-  ['rijes','waon','リジェス・アルバルス',13,'ウォーウルフ','自作の不思議なポスター'],
-  ['yuna','waon','結菜・モンサンパス',14,'種族未公表','モンサンパス家と街での日々'],
+  ['rina','waon','莉奈・モンサンパス',14,'種族未公表','通信環を使った日々の暮らし','女'],
+  ['rijes','waon','リジェス・アルバルス',13,'ウォーウルフ','自作の不思議なポスター','男'],
+  ['yuna','waon','結奈・モンサンパス',14,'種族未公表','モンサンパス家と街での日々','女'],
   ['leia','waon','レイア・ミスト',23,'人間','和温陣国中央図書館の文献'],
   ['noah','waon','ノア・ヴェリス',24,'人間','杖に使う記号回路'],
   ['el','waon','エル・サフィア',42,'人間','杖と記号エネルギーの研究'],
   ['iris','waon','アイリス・フェン',19,'人間','各国の文化と言語'],
   ['kai','waon','カイ・レノス',null,'人間','外交と言語'],
   ['arca','waon','R-09《アルカ》',null,'人型生命体','杖の実験と記号演算']
-].map(([id,nation,name,age,species,topic])=>({id,nation,name,age,species,topic}));
+].map(([id,nation,name,age,species,topic,gender])=>({id,nation,name,age,species,topic,gender}));
+const waonPublicPeople = [
+  ...eastCalendarCast.filter(person=>['rina','yuna','rijes'].includes(person.id)),
+  {name:'T.S.',gender:'−（マイナス）'}
+];
 const residentJobs=['図書館職員','修理工','料理人','仕立て職人','農業従事者','教師','商店の店員','運送の仕事','工房の職人','記録係','看護職','デザイナー'];
 const residentTopics=['町の古い地図','家で作る料理','手入れした道具','地元の昔話','楽器と演奏','風景のスケッチ','草花の観察','古い本の収集','散歩道','小さな模型作り','写真の整理','他の国の言葉','旅先からの便り','市場の食材','ボードゲーム'];
 const originalResidents=Object.keys(nations).flatMap((nation,countryIndex)=>{
