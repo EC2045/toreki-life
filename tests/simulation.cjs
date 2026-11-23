@@ -1,10 +1,10 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),path=require('path');
 const root=path.join(__dirname,'..');
-function boot(storage={}, timers={set:()=>{},clear:()=>{}}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:timers.set,clearTimeout:timers.clear,URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','regions.js','identity.js','people.js','autoplay.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
+function boot(storage={}, timers={set:()=>{},clear:()=>{}}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:timers.set,clearTimeout:timers.clear,URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','regions.js','identity.js','people.js','autoplay.js','boundary.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
 let b=boot(),r=b.run;
 r("s=makeLife();s.nation='waon';s.origin='waon';s.lineage=['人間'];s.species='人間';s.vampire=false;normalize()");
 // No mandatory choices for routine childhood. Stop at the first school milestone.
-r('simulateUntilImportant()');assert.equal(r('s.age'),6);assert.equal(r('s.event'),'first');assert(r('s.activeDecision'));assert(r('s.log.length>20'));r('choose(0)');assert(!r('s.pending'));assert(!r('s.activeDecision'));
+r('const randomBeforeChildhoodTest=Math.random;Math.random=()=>.999;simulateUntilImportant();Math.random=randomBeforeChildhoodTest');assert.equal(r('s.age'),6);assert.equal(r('s.event'),'first');assert(r('s.activeDecision'));assert(r('s.log.length>20'));r('choose(0)');assert(!r('s.pending'));assert(!r('s.activeDecision'));
 // A fixed annual mode cannot exceed its requested time, but can stop early.
 let start=r('tick()');r("simulateUntilImportant('year')");assert(r('tick()')-start<=4);
 // Species and vampire traits are independent; both can coexist.
@@ -76,6 +76,36 @@ play("choose(0)");
 assert.equal(typeof scheduled,'function');
 play('toggleAutoplay()');
 assert.equal(scheduled,null);
+// A saved ticket resumes at the printed date, and each outcome has a single later echo.
+for (const [firstChoice, lastChoice, outcome, ending] of [
+  [0, 0, 'witnessed', '別の町'],
+  [1, 1, 'returned', '帰れました'],
+  [1, 2, 'left', '覚えのない筆跡']
+]) {
+  const playthrough=boot();
+  const story=playthrough.run;
+  story("s=makeLife();s.nation='onva';s.age=9;s.quarter=3;s.species='人間';s.lineage=['人間'];s.vampire=false;s.seen=['first'];normalize();Math.random=()=>.999;simulateUntilImportant('year')");
+  assert.equal(story('s.age'),10);
+  assert.equal(story('s.event'),'boundary-ticket');
+  assert(story("boundaryEvent().body.includes(s.name)&&boundaryEvent().body.includes('2057')"));
+  story(`choose(${firstChoice});s.contacts=[{castId:'aria',status:'friend',closeness:60}];save()`);
+  const resumed=boot(playthrough.storage).run;
+  resumed("Math.random=()=>.999;simulateUntilImportant('year')");
+  assert.equal(resumed('s.activeDecision'),false);
+  resumed("simulateUntilImportant('five')");
+  assert.equal(resumed('s.age'),12);
+  assert.equal(resumed('s.event'),'boundary-platform');
+  const reloadedChoice=boot(playthrough.storage).run;
+  assert(reloadedChoice("s.activeDecision && boundaryEvent().choices[0].text.includes('アリア')"));
+  const before=reloadedChoice('s.contacts[0].closeness');
+  reloadedChoice(`Math.random=()=>.999;choose(${lastChoice})`);
+  assert.equal(reloadedChoice('s.boundaryTicket.outcome'),outcome);
+  assert.equal(reloadedChoice('s.contacts[0].closeness'),lastChoice===0?Math.min(100,before+15):before);
+  reloadedChoice("s.age=17;s.quarter=0;advanceClock();advanceClock();save()");
+  assert(reloadedChoice(`s.log.some(row=>row.type==='境界駅' && row.text.includes('${ending}'))`));
+  assert.equal(reloadedChoice("s.log.filter(row=>row.type==='境界駅').length"),1);
+  assert.equal(reloadedChoice('boundaryEvent()'),null);
+}
 // The saved identity and adoption flow work for all three genders.
 assert.equal(r("rollGender(0)+rollGender(.5)+rollGender(.99)"),'男女不明');
 assert.equal(r("speciesRoll('onva',.45)"),'バイナリ');
@@ -110,4 +140,3 @@ let oldEnd={...old,id:'old-cap',age:80,ended:true,endReason:'80歳。歩んだ�
 oldEnd.endReason='事故で亡くなった。';oldEnd.death={cause:'accident',age:80};let preserved=boot({'toreki-life-v1':JSON.stringify(oldEnd)});assert(preserved.run('s.ended'));
 let lives=0,manual=0,steps=0,ages=[];for(let country of r('Object.keys(nations)')){r(`s=makeLife();s.nation='${country}';s.origin='${country}';s.money=currency('${country}').scale*60;s.digital=false;s.vampire=false;s.species='人間';s.lineage=['人間'];normalize()`);let guard=0;while(!r('s.ended')){if(r('s.activeDecision')){r(`{const e=events().find(x=>x.id===s.event);const i=e.choices.findIndex(c=>!c.digital&&(!c.cost||c.cost<=s.money));if(i<0)throw Error('No affordable choice');choose(i);}`);manual++;}else r('simulateUntilImportant()');assert(++guard<250);assert(r('Number.isFinite(s.money)&&s.money>=0'));assert(r('Object.values(s.stats).every(x=>x>=0&&x<=100&&Number.isFinite(x))'));steps++;}assert(r('s.death&&s.ended'));ages.push(r('s.age'));lives++;}
 assert(ages.some(age=>age>80));assert(manual<lives*80);console.log(JSON.stringify({passed:true,lives,importantChoices:manual,batchSteps:steps,youngest:Math.min(...ages),oldest:Math.max(...ages),earlyFatalAccident:true,noAgeCap:true,age500:true,migration:true,rareTraits:true,localPrices:true,legacyReload:true,ecology:true}));
-
