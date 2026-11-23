@@ -5,6 +5,8 @@ const castSources = {
   waon:'https://ec2045.github.io/Waon-Jinkoku/#tab-database'
 };
 const eastCalendarCast = [
+  ['shuren','onva','シュレン',null,'バイナリ','ニュースの解説'],
+  ['zero','onva','ゼロ',null,'バイナリ','交通制御'],
   ['aria','onva','アリア・ウォーリン',14,'ウォーウルフ','歴史の教科書のデザイン'],
   ['rittsu','onva','りっつー・アルバルス',14,'ウォーウルフ×ウォーキャット','記号を使ったアート'],
   ['agen','onva','ア゛ジェン',17,'ウォーウルフ','学校での暮らし'],
@@ -47,10 +49,12 @@ const originalResidents=Object.keys(nations).flatMap((nation,countryIndex)=>{
     while(used.has(name))name+='・ラ';
     used.add(name);
     const age=Math.floor(random()*35)-12;
-    const species=nation==='onva'||nation==='waon'?['人間','人間','ウォーウルフ','ウォーキャット'][Math.floor(random()*4)]:'人間';
+    const draw=nation==='onva'||nation==='waon'?random():0;
+    const common=['人間','人間','ウォーウルフ','ウォーキャット'][Math.floor(draw*4)];
+    const species=nation==='onva'?(index%12===0?'バイナリ':common):nation==='waon'?(index%12===0?'人型生命体':common):'人間';
     const job=residentJobs[Math.floor(random()*residentJobs.length)];
     const topic=residentTopics[Math.floor(random()*residentTopics.length)];
-    return {id:'resident-'+nation+'-'+index,nation,name,age,species,job,topic,original:true};
+    return {id:'resident-'+nation+'-'+index,nation,name,age,species,job,topic,gender:rollGender(((seed^0x39ab9a10)>>>0)/4294967296),original:true};
   });
 });
 const residents=[...eastCalendarCast,...originalResidents];
@@ -182,11 +186,11 @@ function partnerName(life=s){return castById[life.partnerId]?.name||''}
 function peoplePanel(){
   modal(`<h2>家族と人間関係</h2>
     <h3>生まれた家庭</h3>${householdMarkup(s)}
-    <h3>東暦で出会った人</h3><p>今の国の住民名簿には${residents.filter(p=>p.nation===s.nation).length}人。年代や交流の機会によって、出会う相手が変わります。</p>
+    <h3>養子として迎えた子</h3>${childrenMarkup(s)}<h3>東暦で出会った人</h3><p>今の国の住民名簿には${residents.filter(p=>p.nation===s.nation).length}人。年代や交流の機会によって、出会う相手が変わります。</p>
     ${s.contacts.length?s.contacts.slice().reverse().map(c=>{
       const p=castById[c.castId];
       const status={acquaintance:'知人',friend:'友人',partner:'パートナー'}[c.status];
-      return `<div class="contact-row"><b>${esc(p.name)}</b><span>${status} · ${nations[p.nation].name} · あなたが${c.metAge}歳のときに出会う<br>${p.species} · ${p.original?(contactAge(p)<18?'学生':p.job)+' · ':''}${p.topic}<br>${p.original?'ゲームオリジナルの住民':`<a href="${castSources[p.nation]}" target="_blank" rel="noopener">公開資料</a>`}</span>${!s.ended&&!s.activeDecision&&!s.actionUsed&&(contactAge(p)??6)<=100?`<button class="secondary" data-visit-person="${p.id}">${esc(p.name)}と過ごす</button>`:''}</div>`;
+      return `<div class="contact-row"><b>${esc(p.name)}</b><span>${status} · ${nations[p.nation].name} · あなたが${c.metAge}歳のときに出会う<br>${p.species} · 性別：${p.gender||"不明"} · ${p.original?(contactAge(p)<18?'学生':p.job)+' · ':''}${p.topic}<br>${p.original?'ゲームオリジナルの住民':`<a href="${castSources[p.nation]}" target="_blank" rel="noopener">公開資料</a>`}</span>${!s.ended&&!s.activeDecision&&!s.actionUsed&&(contactAge(p)??6)<=100?`<button class="secondary" data-visit-person="${p.id}">${esc(p.name)}と過ごす</button>`:''}</div>`;
     }).join(''):'<p>日常を進めると、地元や地域間の交流会で東暦の人物と出会えます。</p>'}
     <p>作中の人物との出会いや交際は、今回の人生の出来事として記録されます。</p><h3>生物の記録</h3><p>${s.encounters.length?s.encounters.map(esc).join('、'):'まだ出会っていません。'}</p>`);
   document.querySelectorAll('[data-visit-person]').forEach(button=>{
@@ -201,3 +205,4 @@ function peoplePanel(){
     };
   });
 }
+

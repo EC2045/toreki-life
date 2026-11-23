@@ -1,6 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict'),path=require('path');
 const root=path.join(__dirname,'..');
-function boot(storage={}, timers={set:()=>{},clear:()=>{}}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:timers.set,clearTimeout:timers.clear,URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','regions.js','people.js','autoplay.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
+function boot(storage={}, timers={set:()=>{},clear:()=>{}}){let els=new Map();function el(){return {value:'',textContent:'',innerHTML:'',open:false,onclick:null,classList:{add(){},remove(){}},querySelector(){return el()},addEventListener(){},showModal(){this.open=true},close(){this.open=false},append(){},insertAdjacentHTML(){},click(){}}}let ctx=vm.createContext({console,setTimeout:timers.set,clearTimeout:timers.clear,URL,Blob,document:{querySelector(k){if(!els.has(k))els.set(k,el());return els.get(k)},querySelectorAll(){return []},createElement:el},localStorage:{getItem(k){return storage[k]||null},setItem(k,v){storage[k]=v}}});for(let f of ['game.js','regions.js','identity.js','people.js','autoplay.js','systems.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),ctx,{filename:f});return {ctx,storage,run:code=>vm.runInContext(code,ctx)}}
 let b=boot(),r=b.run;
 r("s=makeLife();s.nation='waon';s.origin='waon';s.lineage=['人間'];s.species='人間';s.vampire=false;normalize()");
 // No mandatory choices for routine childhood. Stop at the first school milestone.
@@ -76,6 +76,25 @@ play("choose(0)");
 assert.equal(typeof scheduled,'function');
 play('toggleAutoplay()');
 assert.equal(scheduled,null);
+// The saved identity and adoption flow work for all three genders.
+assert.equal(r("rollGender(0)+rollGender(.5)+rollGender(.99)"),'男女不明');
+assert.equal(r("speciesRoll('onva',.45)"),'バイナリ');
+assert.equal(r("speciesRoll('waon',.45)"),'人型生命体');
+r("s=makeLife();s.age=10;s.species='バイナリ';s.seen=['first'];normalize()");
+assert.equal(r('importantEvent().id'),'speciesLiving');
+for (const gender of ['男','女','不明']) {
+  r(`s=makeLife();s.age=17;s.gender='${gender}';s.partnerId=null;normalize()`);
+  assert.equal(r('adoptChild()'),false);
+  r('s.age=18');
+  assert(r('adoptChild()'));
+  assert.equal(r('adoptChild()'),false);
+  assert(r("s.log.some(x=>x.type==='家族'&&x.text.includes(s.children[0].name))"));
+  const saved=boot(b.storage).run('s');
+  assert.equal(saved.gender,gender);
+  assert.equal(saved.children.length,1);
+  r("s.age=19;s.money=100000;annualEconomy()");
+  assert(r("s.log[0].text.includes('養育費')"));
+}
 // A healthy 81-year-old is not forcibly ended; everyday and ecology events stay available.
 r("s=makeLife();s.age=81;s.quarter=0;s.stats.health=100;s.digital=false;normalize()");assert.equal(r('finishCheck()'),false);assert(r("events().filter(eligible).some(e=>e.id==='library')"));assert(r("ecologyEvents().filter(e=>e.ns?.includes('onva')).length>0"));
 // Forced rare fatal accident: auto progression stops at age 3, with one final log and durable cause.
@@ -91,3 +110,4 @@ let oldEnd={...old,id:'old-cap',age:80,ended:true,endReason:'80歳。歩んだ�
 oldEnd.endReason='事故で亡くなった。';oldEnd.death={cause:'accident',age:80};let preserved=boot({'toreki-life-v1':JSON.stringify(oldEnd)});assert(preserved.run('s.ended'));
 let lives=0,manual=0,steps=0,ages=[];for(let country of r('Object.keys(nations)')){r(`s=makeLife();s.nation='${country}';s.origin='${country}';s.money=currency('${country}').scale*60;s.digital=false;s.vampire=false;s.species='人間';s.lineage=['人間'];normalize()`);let guard=0;while(!r('s.ended')){if(r('s.activeDecision')){r(`{const e=events().find(x=>x.id===s.event);const i=e.choices.findIndex(c=>!c.digital&&(!c.cost||c.cost<=s.money));if(i<0)throw Error('No affordable choice');choose(i);}`);manual++;}else r('simulateUntilImportant()');assert(++guard<250);assert(r('Number.isFinite(s.money)&&s.money>=0'));assert(r('Object.values(s.stats).every(x=>x>=0&&x<=100&&Number.isFinite(x))'));steps++;}assert(r('s.death&&s.ended'));ages.push(r('s.age'));lives++;}
 assert(ages.some(age=>age>80));assert(manual<lives*80);console.log(JSON.stringify({passed:true,lives,importantChoices:manual,batchSteps:steps,youngest:Math.min(...ages),oldest:Math.max(...ages),earlyFatalAccident:true,noAgeCap:true,age500:true,migration:true,rareTraits:true,localPrices:true,legacyReload:true,ecology:true}));
+
